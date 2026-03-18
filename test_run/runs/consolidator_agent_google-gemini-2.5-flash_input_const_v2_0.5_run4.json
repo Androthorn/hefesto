@@ -1,0 +1,63 @@
+{
+  "run_id": "google-gemini-2.5-flash_input_const_v2_0.5_run4",
+  "timestamp": "2026-01-13 12:05:11",
+  "prompt_version": "v2",
+  "agent_name": "consolidator_agent",
+  "metrics": {
+    "cost": {
+      "mean": 0.05484266666666667,
+      "min": 0.0448,
+      "max": 0.06272,
+      "std": 0.008160152430170396,
+      "median": 0.05824
+    },
+    "cpu_usage": {
+      "mean": 1.3545333333333331,
+      "min": 0.915,
+      "max": 1.699,
+      "std": 0.2593028114436842,
+      "median": 1.44
+    },
+    "mem_usage": {
+      "mean": 1.3411833333333336,
+      "min": 0.906,
+      "max": 1.682,
+      "std": 0.2567046374804218,
+      "median": 1.4260000000000002
+    },
+    "pending_pods": {
+      "mean": 33.56666666666667,
+      "min": 0.0,
+      "max": 90.0,
+      "std": 34.466080926953055,
+      "median": 30.0
+    },
+    "time_with_pending": {
+      "mean": 0.5833333333333334,
+      "min": 0.0,
+      "max": 1.0,
+      "std": 0.4971671160112442,
+      "median": 1.0
+    },
+    "wokloads_with_pending_pods": {
+      "mean": 0.21318391832476338,
+      "min": 0.0,
+      "max": 0.5625,
+      "std": 0.21586548368674832,
+      "median": 0.2
+    },
+    "number_of_migrations": {
+      "mean": 61.2,
+      "min": 0.0,
+      "max": 86.0,
+      "std": 35.597752738059185,
+      "median": 80.0
+    }
+  },
+  "logs": [],
+  "metadata": {
+    "original_dir": "/home/andrecunha/\u00c1rea de Trabalho/Projetos/simulator/analyzer/output/google-gemini-2.5-flash_input_const_v2_0.5_run4",
+    "temperature": 0.5,
+    "model": "google-gemini-2.5-flash_input_const"
+  }
+}
