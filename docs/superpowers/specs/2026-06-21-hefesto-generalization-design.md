@@ -1,30 +1,56 @@
 # Hefesto — Generalist Prompt-Refinement Tool
 
 > **Date:** 2026-06-21
-> **Status:** Design approved (revised after tríade review), pending implementation plan
+> **Status:** Design approved (revised after two tríade rounds — engineering + ideas), pending implementation plan
 > **Predecessor:** ADRS (WASP-coupled), preserved at git tag `v0.1.0`
 
 ## Summary
 
 Hefesto generalizes the former ADRS system from a tool welded to the WASP
-Kubernetes simulator into a **domain-agnostic prompt-refinement tool**: whenever
-someone wants to improve a prompt, they use Hefesto. It runs an evaluation-first
-loop — draft → run over test inputs → grade → score → refine → repeat — with a
-champion/challenger promotion rule so a prompt's score never regresses.
+Kubernetes simulator into a **domain-agnostic prompt-refinement tool** — a forge
+for prompts. Its promise:
 
-The current "evaluation" (external K8s simulation metrics scored against fixed
-baselines) is demoted from the center of the system to **one follow-on example
-plugin**. The default path requires no external system at all: Hefesto generates
-test inputs from the objective, executes the prompt against an LLM, and an
-LLM-judge turns outputs into metrics scored against the objective.
+> *Bring raw ore — a prompt and a goal — and leave with a tempered one that
+> provably outperforms what you came with.*
+
+Hefesto runs an evaluation-first loop — run over test inputs → grade → score →
+refine → repeat — and what makes it more than "ask a chatbot to fix my prompt"
+is four earned strengths it leads with:
+
+1. **It refines without bloating** — concrete few-shot examples from real
+   failures, not stacked rules (the `FINDINGS.md` lesson).
+2. **It never ships a regression** — champion/challenger promotion on a held-out
+   test set; a new version wins only if it provably beats the best so far.
+3. **It shows its work** — a full audit trail of every attempt and why it lost.
+4. **It never breaks your pipeline** — declared invariants (e.g. output format)
+   are guaranteed to survive refinement.
+
+**Signal trust ladder.** Hefesto always seeks the strongest available signal:
+- **Tier 3 — real metrics (gold):** a simulation or production data the user
+  brings (the WASP origin). Foregrounded as the most trustworthy path.
+- **Tier 2 — verifiable judge:** an LLM judge backed by checks it cannot fake
+  (regex/schema validators, "does the cited fact appear in the source", compiles/runs).
+- **Tier 1 — calibrated judge (zero-setup fallback):** with nothing but a prompt
+  and an objective, Hefesto generates test inputs and an LLM judge grades them.
+  These scores are a **calibrated proxy**, not objective ground truth, and are
+  labeled as such (see Trust Model). This is the easy on-ramp, not the headline.
+
+The old K8s simulation scoring is demoted to **one follow-on example plugin**
+(the Tier-3 worked example).
 
 ## Goals
 
-- Refine **any** prompt in **any** scenario from just a prompt + an objective.
-- Zero-setup default: no external metrics, dataset, or grader code required.
-- Keep external/user-supplied metrics as a first-class option (WASP-style).
+- Refine **any prompt that has a checkable objective**, from just a prompt + an
+  objective in the zero-setup case.
+- Be honest about fit: detect at intake whether the objective is judge-gradable,
+  needs an external oracle, or is subjective — and tell the user which signal
+  tier applies (no silent over-promising).
+- Know when to stop: detect "this prompt is already strong — nothing to forge"
+  rather than shipping a worse prompt with a confident score.
+- Treat user-supplied / real metrics as the **gold path**, not a footnote.
 - Encode the lessons already learned (see `FINDINGS.md`): few-shot refinement
-  over rule-stacking, and never promoting a candidate on noise.
+  over rule-stacking, never promoting a candidate on noise, and never trusting a
+  single data point.
 - Provider-agnostic: the user explicitly chooses provider + model; none baked in.
 - Leave clean seams a future frontend can drive over the same core.
 
@@ -40,8 +66,12 @@ LLM-judge turns outputs into metrics scored against the objective.
 
 | Decision | Choice |
 |----------|--------|
-| Evaluation model | Unify under pluggable graders; LLM-judge is the default |
-| Signal source when no user metrics | Hefesto runs the prompt and judges it; judge scores **are** the metrics |
+| Evaluation model | Unify under pluggable graders; signal **trust ladder** (real metrics > verifiable judge > calibrated judge) |
+| Signal source when no user metrics | Hefesto runs the prompt and judges it; judge scores are a **calibrated proxy**, explicitly not "objective metrics" |
+| Judge independence | Judge defaults to a **different model** than the prompt-under-test; **calibrated** against a reference set and the agreement reported with every score; pairwise (A-vs-B) comparison supported |
+| Signal-fit + headroom | At intake, classify the objective (judge-gradable \| needs-oracle \| subjective) and surface the tier; detect "already strong — nothing to forge" and stop |
+| Positioning | Lead with the earned strengths (anti-bloat, never-regress, audit trail, invariants); judge + universality are honest, caveated fallbacks. Tagline bound to rigor, not method |
+| Anti-overfit | **Dev/test split**: few-shot examples mined from a dev set; champion/challenger scored on a held-out test set; champion periodically re-validated |
 | Onboarding | Dataset generated from objective by default; user may supply instead |
 | Rubric & weights | Judge **proposes** the rubric (dimensions + suggested weights) from the objective; user edits. Weights are **not** required user input |
 | Prompt model | **Flat text** with a `{{input}}` (and optional `{{context}}`) placeholder the Runner fills. No structured system/user/variables template |
@@ -59,29 +89,37 @@ The user always brings a **prompt** and an **objective** (plain-English
 description of "better"). Everything else Hefesto can produce itself.
 
 ```
-  STEP 0 (baseline): score the seed prompt  ->  champion + s1
+  INTAKE: classify objective -> signal tier; if judge-tier, CALIBRATE judge
+          vs a small reference set -> report agreement (gate scores)
+  STEP 0: score the seed prompt on the TEST split  ->  champion + s1
+          headroom check: "already strong, nothing to forge"? -> stop early
         ┌─────────── one iteration ───────────┐
 prompt ─┤                                      │
-        │  1. DATASET   test inputs (frozen)   │  generated from objective
-obj. ───┤     (generate OR user-supplied)      │  (or loaded from file)
+        │  1. DATASET   dev split | test split  │  generated or user-supplied
+obj. ───┤     (both frozen for the run)         │  dev = mine examples; test = score
         │  2. RUNNER    run prompt over inputs  │  fills {{input}}, any provider
-        │  3. GRADER    outputs → metrics       │  LLM-judge default
-        │  4. SCORE     aggregate vs weights    │  composite in [0,1]
-        │  5. REFINER   propose challenger      │  few-shot, not rule-stacking
+        │  3. GRADER    outputs → metrics       │  judge (≠ runner model) or real signal
+        │  4. SCORE     aggregate vs weights    │  composite in [0,1] (proxy if judge)
+        │  5. REFINER   propose challenger      │  few-shot from DEV split, not rules
         │  6. INVARIANT check frozen regions    │  byte-equal or discard
-        │  7. PROMOTE   challenger vs champion   │  paired, margin-gated
+        │  7. PROMOTE   challenger vs champion   │  on TEST split, paired, margin-gated
         └──────────────────────────────────────┘
-                 ↓ repeat until plateau / max iters / target
+                 ↓ repeat until plateau / max iters / target / no-headroom
         champion + full audit trail (every attempt, version-tracked)
 ```
 
-With no user-supplied metrics, the **LLM-judge scores ARE the metrics**.
-User-supplied metrics replace or augment that judge.
+The signal depends on the tier (see Trust Model). With no user-supplied metrics
+(Tier 1), the LLM-judge produces a **calibrated proxy** score — never presented
+as objective ground truth. User-supplied / real metrics (Tier 3) replace the
+judge and are the gold path. The **dev split** is where few-shot examples are
+mined; the **test split** is held out and is the only thing promotion scores
+against — so the loop cannot train on its own eval set.
 
-**Score scale (pinned).** Every metric dimension is normalized to `[0, 1]` (a
-judge's 1–10 becomes `(x-1)/9`; a WASP `v/b` ratio uses `max(0, 1 - v/b)`). The
-composite score is the weighted average of normalized dimensions, also in
-`[0, 1]`. All margins and thresholds below are expressed on this scale.
+**Score scale (pinned).** Every metric dimension is normalized to `[0, 1]`
+(absolute judge 1–10 → `(x-1)/9`; pairwise judging yields a win-rate already in
+`[0, 1]`; a WASP `v/b` ratio uses `max(0, 1 - v/b)`). The composite score is the
+weighted average of normalized dimensions, also in `[0, 1]`. All margins and
+thresholds below are expressed on this scale.
 
 ## Architecture — Four Pluggable Interfaces
 
@@ -93,11 +131,14 @@ hefesto/
 ├── schemas/             # shared types: TestCase, Output, Metrics,
 │                        #   ScoredResult, Objective, Rubric  (Pydantic)
 ├── core/
-│   └── loop.py          # orchestrator: STEP 0 baseline + iterations,
-│                        #   stop criteria, invariant check, promotion. No domain logic.
+│   ├── loop.py          # orchestrator: intake, STEP 0 baseline + iterations,
+│   │                    #   stop criteria, invariant check, promotion. No domain logic.
+│   ├── intake.py        #   classify objective -> signal tier; headroom check
+│   └── calibrate.py     #   judge vs reference set -> agreement score (gates judge)
 ├── dataset/
-│   ├── base.py          # DatasetSource: provide() -> list[TestCase]
+│   ├── base.py          # DatasetSource: provide() -> dev + test splits
 │   ├── generate.py      #   generate cases from objective (via LLM)
+│   ├── split.py         #   dev / held-out test partition
 │   └── load.py          #   load cases from jsonl/json/csv
 ├── runner/
 │   ├── base.py          # Runner: run(prompt, case) -> Output
@@ -105,9 +146,10 @@ hefesto/
 │   └── echo_runner.py   #   trivial non-LLM runner (seam-proof fixture/tests)
 ├── grader/
 │   ├── base.py          # Grader: grade(case, output, objective) -> Metrics
-│   ├── llm_judge.py     #   DEFAULT — scores each rubric dimension, normalized
+│   ├── llm_judge.py     #   Tier 1 — pairwise/absolute judge, normalized proxy
+│   ├── verifiable.py    #   Tier 2 — judge + code checks it can't fake
 │   ├── code.py          #   exact / regex / schema / assertion checks
-│   └── metric.py        #   GENERIC weighted-baseline scoring over dict[str,float]
+│   └── metric.py        #   Tier 3 — GENERIC weighted-baseline over dict[str,float]
 ├── refiner/
 │   ├── refiner.py       # Refiner: propose(champion, selected_cases, objective)
 │   │                    #   -> challenger prompt  (few-shot meta-prompt)
@@ -157,6 +199,51 @@ This closes the chicken-and-egg gap: the judge proposes the rubric+weights
 during `init`/`gen-dataset`, the user edits `objective.yaml`, and from then on
 judge keys and weight keys are guaranteed to align.
 
+## Trust Model
+
+The tríade's sharpest finding: the zero-setup judge path is the *least*
+trustworthy and must not masquerade as objective measurement. The design answers
+this with four commitments.
+
+### 1. Signal tiers (intake classification)
+
+`core/intake.py` classifies the objective before any refinement:
+
+| Tier | Signal | When | Honesty label |
+|------|--------|------|---------------|
+| 3 — real metrics (gold) | user-supplied / simulation / production | user brings metrics | "objective" |
+| 2 — verifiable judge | judge + checks the model can't fake (regex, schema, fact-in-source, compiles) | objective has machine-checkable parts | "partially verified" |
+| 1 — calibrated judge | LLM judge on generated inputs | nothing but prompt + objective | **"proxy — judge agreement N%"** |
+
+Intake reports which tier applies and warns when the objective needs an external
+oracle the judge cannot supply (e.g. "does this code compile", "is this citation
+real"). It never silently grades what it cannot grade.
+
+### 2. Judge independence
+
+The judge defaults to a **different model** than the prompt-under-test (config
+fails fast if they're identical without an explicit override), to avoid a model
+rewarding its own blind spots / self-preference bias.
+
+### 3. Judge calibration (scores must earn authority)
+
+Before judge scores are allowed to gate promotion, `core/calibrate.py` checks the
+judge against a small reference set of known good/bad outputs (the user's, or —
+neatly — Hefesto's own FINDINGS best/worst examples as a built-in fixture). It
+computes a **judge-agreement score** and:
+- reports it alongside every composite score (`proxy — judge agreement 82%`);
+- warns loudly when agreement is low (the judge can't tell good from bad here);
+- prefers **pairwise (A-vs-B)** judgments over absolute 1–10 scoring, which are
+  substantially more reliable for LLM judges.
+
+### 4. Headroom / stop
+
+`intake.py` (and the loop's stop criteria) detect when the seed prompt is already
+strong enough that refinement only adds noise — Hefesto says *"already strong,
+nothing to forge"* and stops, rather than promoting a marginal, possibly-worse
+prompt. This is FINDINGS' gemini-base-beats-refinements result turned into a
+feature.
+
 ### Reuse map (honest tiers)
 
 The product spine — `loop`, `runner`, `dataset/generate`, `llm_judge`,
@@ -189,9 +276,10 @@ degradation spiral.
 ### Refiner (how a better prompt is proposed)
 
 `refiner.propose(champion_prompt, selected_cases, objective)` where
-`selected_cases = select_contrast(scored_results, k)` = the top-k best + bottom-k
-worst cases of the current evaluation, each carrying concrete
-`(input, output, metrics, judge_notes)`. The meta-prompt enforces:
+`selected_cases = select_contrast(dev_results, k)` = the top-k best + bottom-k
+worst cases **from the dev split**, each carrying concrete
+`(input, output, metrics, judge_notes)`. Examples are mined from the dev split
+only; the test split stays unseen by refinement. The meta-prompt enforces:
 
 - **Prefer few-shot examples over rules.** On a failing case, add a concrete
   input→correct-output example, not nested `1.a / 1.b` rules. (v5 beat the v1
@@ -212,30 +300,41 @@ logged to the audit trail with reason `invariant_violation`).
 ### Promotion rule (never regress on noise)
 
 ```
+# INTAKE
+tier = intake.classify(objective)                   # 3 real | 2 verifiable | 1 judge
+if tier == judge: agreement = calibrate(judge, reference_set)   # gate + report
+dev, test = split(dataset)                           # both frozen for the run
+
 # STEP 0
 champion       = seed prompt
-champion_score = evaluate(champion, dataset)        # frozen dataset, judge_samples each
+champion_dev   = evaluate(champion, dev)             # for example mining
+champion_test  = evaluate(champion, test)            # for promotion comparison
+if intake.no_headroom(champion_test): stop("already strong — nothing to forge")
 
 for each iteration:
-    candidate = refiner.propose(champion, select_contrast(champion_results, k), objective)
+    candidate = refiner.propose(champion, select_contrast(champion_dev, k), objective)
     if not invariants_ok(candidate):                # hard byte-check
         log_rejected(candidate, reason="invariant_violation"); fails += 1; continue
-    cand_results = evaluate(candidate, dataset)      # SAME frozen dataset, judge_samples each
-    delta = paired_mean(cand_results, champion_results)   # per-case composite deltas
+    cand_test = evaluate(candidate, test)            # SAME held-out test split, judge_samples each
+    delta = paired_mean(cand_test, champion_test)    # per-case composite deltas
     if delta > epsilon_k * pooled_std(...):          # margin in std units
-        champion, champion_results, champion_score = candidate, cand_results, cand_results.score
-        log_promoted(candidate, delta); fails = 0
+        champion = candidate
+        champion_dev, champion_test = evaluate(candidate, dev), cand_test
+        log_promoted(candidate, delta, agreement); fails = 0
     else:
         log_rejected(candidate, reason="no_improvement", delta=delta); fails += 1
-stop when: fails ≥ patience  OR  iter ≥ max_iter  OR  champion_score ≥ target
+stop when: fails ≥ patience  OR  iter ≥ max_iter  OR  champion_test.score ≥ target
 return champion + full audit trail
 ```
 
 Design choices that fix the tríade findings:
 
-- **Frozen dataset.** The dataset is generated/loaded once at STEP 0 and reused
-  for every comparison, so scores are comparable across iterations. Regeneration
-  only via an explicit flag.
+- **Dev/test split.** Examples are mined from `dev`; promotion is scored only on
+  the held-out `test` split — so the loop can't overfit its own eval set. Both
+  splits are frozen for the run; the champion is re-validated on promotion.
+- **Frozen dataset.** Generated/loaded once at intake and reused for every
+  comparison, so scores are comparable across iterations. Regeneration only via
+  an explicit flag.
 - **Paired, same-dataset comparison.** Champion and candidate are both scored on
   the same cases; promotion uses the mean of per-case deltas, not two
   independently-measured scalars.
@@ -260,7 +359,7 @@ Design choices that fix the tríade findings:
 providers:
   default:  { provider: <required>, model: <required> }   # fallback for all roles
   runner:   { provider: <required>, model: <required>, temperature: 0.7 }
-  judge:    { provider: <required>, model: <required>, temperature: 0.0 }
+  judge:    { provider: <required>, model: <required>, temperature: 0.0 }   # must differ from runner
   refiner:  { provider: <required>, model: <required>, temperature: 0.7 }
   dataset:  { provider: <required>, model: <required>, temperature: 1.0 }
   # each role resolves from its own block or falls back to `default`
@@ -273,16 +372,25 @@ dataset:
   count: 20                      # if generate
   path:  ./cases.jsonl           # if load
   freeze: true                   # generated/loaded once, reused across iterations
+  test_fraction: 0.4             # held-out test split; remainder is the dev split
 
-grader:  llm_judge               # llm_judge | code | metric | <plugin>
+grader:  llm_judge               # llm_judge | verifiable | metric | code | <plugin>
+
+judge:
+  mode: pairwise                 # pairwise (A-vs-B, preferred) | absolute
+  require_different_model: true  # judge model must differ from runner
+  calibration:
+    reference: ./reference.jsonl # known good/bad outputs; falls back to FINDINGS fixture
+    min_agreement: 0.7           # warn / refuse to gate below this
 
 loop:
   max_iter: 5
   patience: 2                    # stop after N non-improving iterations
-  k: 3                           # best-k + worst-k cases fed to the refiner
+  k: 3                           # best-k + worst-k DEV cases fed to the refiner
   epsilon_k: 1.0                 # promotion margin in pooled-std units
   judge_samples: 1               # judge each case N times, average
   target: null                   # optional early-stop composite score (0–1)
+  headroom_min: 0.05             # stop if seed already within this of target/ceiling
 
 store: { type: sqlite, path: ./hefesto.db }
 ```
@@ -295,8 +403,9 @@ config slot; the fail-fast check covers all four.
 | Command | Purpose |
 |---------|---------|
 | `hefesto init` | scaffold `hefesto.yaml` (providers as `<required>` sentinels), `objective.yaml`, `prompt.txt`; **judge proposes a starter rubric + weights** for the user to edit |
-| `hefesto refine` | **primary** — run STEP 0 + the loop, emit best prompt + audit trail |
-| `hefesto eval` | one-shot: score the current prompt on the dataset, no refinement (also reusable as a holdout validator via `--dataset`) |
+| `hefesto refine` | **primary** — intake (tier + headroom) → STEP 0 → the loop, emit best prompt + audit trail |
+| `hefesto calibrate` | check the judge against a reference set, report judge-agreement, before trusting its scores |
+| `hefesto eval` | one-shot: score the current prompt on the dataset, no refinement (also a holdout validator via `--dataset`) |
 | `hefesto gen-dataset` | generate test cases from the objective and write them out to edit |
 | `hefesto history` | list versions + scores (incl. rejected attempts) for a prompt |
 | `hefesto diff --from --to` | full-text diff two prompt versions |
@@ -332,9 +441,12 @@ TDD throughout (the repo currently has **no tests** — this harness is new), wi
 a `FakeLLMProvider` so the loop is deterministic without API calls.
 
 - **Unit:** each interface in isolation — `dataset/generate` (mock LLM returns N
-  cases), `llm_judge.grade` (fake judge → known normalized metrics),
-  `score/aggregate` (pure, table-driven, incl. missing-key / unweighted-key
-  rules), `refiner/select.select_contrast`, `invariants` byte-check, `diff`.
+  cases), `dataset/split` (dev/test partition, no leakage), `llm_judge.grade`
+  (fake judge → known normalized metrics), `intake.classify` (tier + headroom on
+  fixtures), `calibrate` (agreement on a known good/bad reference; refuses to
+  gate below `min_agreement`), `score/aggregate` (pure, table-driven, incl.
+  missing-key / unweighted-key rules), `refiner/select.select_contrast`,
+  `invariants` byte-check, `diff`.
 - **Loop integration (headline test):** scripted sequence where candidate 2 is
   worse → assert the champion is **never** replaced, the next candidate branches
   from the champion, and both rejected attempts are logged. Regression guard for
@@ -346,31 +458,39 @@ a `FakeLLMProvider` so the loop is deterministic without API calls.
 
 ## Open Questions / Risks
 
-- **Closed-loop proxy risk.** The zero-setup default optimizes LLM-generated
-  inputs graded by an LLM judge against a judge-seeded rubric — no external
-  ground truth. Mitigation: `eval --dataset <holdout>` re-scores the final
-  champion on a separate, user-supplied set (the automated form of FINDINGS'
-  manual 10-run validation). The docs must state plainly that the no-dataset
-  result optimizes a proxy.
-- **Judge reliability.** Drives `judge_samples` + `epsilon_k`; defaults
-  conservative, may need per-task tuning.
-- **Cost.** Each iteration runs the full frozen dataset through runner + judge
-  (×`judge_samples`); `count`, `max_iter`, `patience` bound spend. Surface an
-  estimate before running.
+- **Closed-loop proxy risk (mitigated, not eliminated).** The zero-setup default
+  optimizes LLM-generated inputs graded by an LLM judge. The Trust Model attacks
+  this from four sides — judge ≠ runner model, calibration with a reported
+  agreement score, dev/test split, and explicit proxy labeling — but Tier-1
+  scores remain a proxy. Docs must say so plainly, and `eval --dataset <holdout>`
+  on real data is the recommended final validation.
+- **Calibration reference availability.** Calibration needs a few known good/bad
+  examples; when the user has none, Hefesto falls back to the FINDINGS fixture,
+  which is K8s-flavored and may not generalize. Open question: how to bootstrap a
+  reference set for a brand-new domain (candidate: ask the user to label ~5
+  generated outputs during `init`).
+- **Judge reliability.** Drives `judge_samples`, `epsilon_k`, and the calibration
+  gate; defaults conservative, may need per-task tuning.
+- **Cost.** Each iteration runs dev + test splits through runner + judge
+  (×`judge_samples`), plus calibration; `count`, `max_iter`, `patience` bound
+  spend. Surface an estimate before running.
 
 ## Rollout (sequenced for a usable core first)
 
 1. Tag `v0.1.0` (done).
 2. Rename `adrs` → `hefesto`; port the genuinely-intact modules (`llm/base|direct|
    openrouter`, `diff`); add `schemas/` + `FakeLLMProvider`.
-3. Build the spine: `dataset/generate` → `llm_runner` (+`echo_runner`) →
-   `llm_judge` → `score/aggregate`, with the Grader↔weights contract (TDD).
-4. Build `loop.py`: STEP 0 baseline, champion/challenger promotion, hard invariant
-   check, full-audit persistence — headline test first.
-5. Refiner: `refiner/refiner.py` (keep few-shot wording) + `select_contrast` +
-   rule-density lint.
-6. CLI `init` (with judge-seeded rubric) / `eval` / `refine` / `history` / `diff`;
-   update README/GUIDE for the generalist identity. **Usable core — ship here.**
-7. **Follow-on:** `plugins/wasp/` (CSV import, metric presets, sim runner wiring
+3. Build the spine: `dataset/generate` + `split` → `llm_runner` (+`echo_runner`)
+   → `llm_judge` → `score/aggregate`, with the Grader↔weights contract (TDD).
+4. Trust Model: `intake.classify` (signal tier + headroom) + `calibrate` (judge
+   agreement, pairwise mode, judge ≠ runner enforcement).
+5. Build `loop.py`: intake → STEP 0 baseline → champion/challenger on the test
+   split, hard invariant check, full-audit persistence — headline test first.
+6. Refiner: `refiner/refiner.py` (keep few-shot wording) + `select_contrast` over
+   the dev split + rule-density lint.
+7. CLI `init` (judge-seeded rubric) / `calibrate` / `eval` / `refine` / `history`
+   / `diff`; update README/GUIDE for the generalist identity, leading with the
+   four earned strengths. **Usable core — ship here.**
+8. **Follow-on:** `plugins/wasp/` (CSV import, metric presets, sim runner wiring
    `grader/metric.py`); FINDINGS-parity smoke test pinned to `FIXED_COST=0.0224`
    + `overload_penalty=0.0`, non-gating.
