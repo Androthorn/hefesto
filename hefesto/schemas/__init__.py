@@ -1,45 +1,9 @@
-"""Schema definitions for ADRS input/output validation."""
-
-from hefesto.schemas.input import (
-    MetricStats,
-    LogEntry,
-    ExperimentRun,
-    PromptTemplate,
-    AgentPrompt,
-    Objective,
+from hefesto.schemas.core import (
+    TestCase, Output, Metrics, ScoredResult,
+    Rubric, RubricDimension, Objective,
 )
-from hefesto.schemas.output import (
-    DiffEntry,
-    PromptDiff,
-    RefinementResult,
-)
-from hefesto.schemas.evaluation import (
-    ScoringWeights,
-    MetricScore,
-    ScoringResult,
-    EvaluationResult,
-)
-from hefesto.schemas.config import ADRSConfig, LLMConfig, StorageConfig
 
 __all__ = [
-    # Input schemas
-    "MetricStats",
-    "LogEntry",
-    "ExperimentRun",
-    "PromptTemplate",
-    "AgentPrompt",
-    "Objective",
-    # Output schemas
-    "DiffEntry",
-    "PromptDiff",
-    "RefinementResult",
-    # Evaluation schemas
-    "ScoringWeights",
-    "MetricScore",
-    "ScoringResult",
-    "EvaluationResult",
-    # Config schemas
-    "ADRSConfig",
-    "LLMConfig",
-    "StorageConfig",
+    "TestCase", "Output", "Metrics", "ScoredResult",
+    "Rubric", "RubricDimension", "Objective",
 ]
