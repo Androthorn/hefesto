@@ -45,7 +45,8 @@ def refine(config: str = typer.Option("hefesto.yaml", "--config")):
     """Run the refinement loop (intake -> STEP 0 -> champion/challenger)."""
     cfg = HefestoConfig.from_yaml(config)
     objective = _load_objective(cfg.objective)
-    seed_prompt = open(cfg.prompt).read()
+    with open(cfg.prompt, encoding="utf-8") as f:
+        seed_prompt = f.read()
     weights = objective.weights or {"quality": 1.0}
     rubric = _rubric_from(objective)
 
@@ -70,6 +71,16 @@ def refine(config: str = typer.Option("hefesto.yaml", "--config")):
         objective=objective, weights=weights, config=cfg.loop, repo=repo,
     )
     result = loop.run(seed_prompt, split)
+
+    # Persist the champion prompt and its score
+    promoted = [h for h in result.history if h.get("promoted")]
+    champion_version = promoted[-1]["candidate_version"] if promoted else "v1"
+    repo.save_prompt(name="prompt", version=champion_version,
+                     prompt_text=result.champion, parent_version=None)
+    repo.save_evaluation(prompt_version=champion_version,
+                         composite_score=result.champion_score,
+                         metrics={}, judge_agreement=None)
+
     typer.echo(f"Champion score: {result.champion_score:.3f}")
     typer.echo(f"Attempts: {len(result.history)} (promoted: "
                f"{sum(1 for h in result.history if h['promoted'])})")

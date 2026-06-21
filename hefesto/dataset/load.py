@@ -11,7 +11,7 @@ class LoadedDataset:
 
     def provide(self) -> DatasetSplit:
         cases: list[TestCase] = []
-        with open(self.path) as f:
+        with open(self.path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:

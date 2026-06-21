@@ -1,11 +1,13 @@
 """
-ADRS - Automated Dynamic Refinement System
+Hefesto — evaluation-first prompt refinement
 
-A tool for optimizing LLM agent prompts based on experimental metrics and feedback.
+Hefesto is the forge for prompts: it runs your seed prompt through a structured
+evaluation loop, measures quality against your objective, and iteratively proposes
+improvements until the champion prompt converges or patience is exhausted.
 """
 
 # Module name is configurable - change this to rebrand the tool
-MODULE_NAME = "ADRS"
-MODULE_FULL_NAME = "Automated Dynamic Refinement System"
+MODULE_NAME = "Hefesto"
+MODULE_FULL_NAME = "Hefesto — evaluation-first prompt refinement"
 
 __version__ = "0.1.0"

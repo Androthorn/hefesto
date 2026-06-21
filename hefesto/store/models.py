@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -15,7 +15,7 @@ class PromptRecord(Base):
     version: Mapped[str] = mapped_column(String(50))
     parent_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     prompt_text: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class EvaluationRecord(Base):
@@ -25,7 +25,7 @@ class EvaluationRecord(Base):
     composite_score: Mapped[float] = mapped_column(Float)
     metrics_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     judge_agreement: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class RefinementRecord(Base):
@@ -38,7 +38,7 @@ class RefinementRecord(Base):
     reason: Mapped[str] = mapped_column(String(64))
     reasoning: Mapped[str] = mapped_column(Text, default="")
     diff: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 class RunRecord(Base):
@@ -48,4 +48,4 @@ class RunRecord(Base):
     case_input: Mapped[str] = mapped_column(Text)
     output_text: Mapped[str] = mapped_column(Text)
     metrics_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -5,6 +5,7 @@ import yaml
 from typer.testing import CliRunner
 import hefesto.cli as cli
 from hefesto.llm.fake import FakeLLMProvider
+from hefesto.store.repository import Repository
 
 runner = CliRunner()
 
@@ -47,3 +48,8 @@ def test_refine_runs_offline(tmp_path, monkeypatch):
     result = runner.invoke(cli.app, ["refine", "--config", cfg_path])
     assert result.exit_code == 0, result.output
     assert "champion" in result.output.lower()
+
+    # Verify champion evaluation was persisted to the store
+    repo = Repository(str(tmp_path / "h.db"))
+    evaluations = repo.get_evaluations()
+    assert len(evaluations) > 0, "Expected at least one evaluation record (champion score) in the store"

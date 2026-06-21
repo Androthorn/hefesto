@@ -1,4 +1,4 @@
-"""LLM provider implementations for ADRS."""
+"""LLM provider implementations for Hefesto."""
 
 from hefesto.llm.base import LLMProvider, LLMMessage
 from hefesto.llm.openrouter import OpenRouterProvider

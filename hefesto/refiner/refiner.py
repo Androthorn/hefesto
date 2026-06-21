@@ -33,7 +33,7 @@ class Refiner:
         user = (
             f"Objective: {objective.goal}\n\n"
             f"Current prompt:\n{champion_prompt}\n\n"
-            f"Best/worst cases:\n{examples}\n\n"
+            f"Best/worst cases (score scale: 0.0 = worst, 1.0 = best):\n{examples}\n\n"
             "Propose an improved prompt."
         )
         resp = self.provider.complete([
