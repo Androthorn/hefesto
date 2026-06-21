@@ -1,33 +1,13 @@
-"""Factory function for creating LLM providers."""
-
+"""Create an LLMProvider from a ProviderConfig. No baked-in defaults."""
 from hefesto.llm.base import LLMProvider
 from hefesto.llm.openrouter import OpenRouterProvider
 from hefesto.llm.direct import DirectProvider
-from hefesto.schemas.config import LLMConfig
+from hefesto.schemas.config import ProviderConfig
 
 
-def create_provider(config: LLMConfig) -> LLMProvider:
-    """
-    Create an LLM provider based on configuration.
-    
-    Args:
-        config: LLM configuration specifying provider and model
-        
-    Returns:
-        Configured LLMProvider instance
-        
-    Raises:
-        ValueError: If provider type is not supported
-    """
-    if config.provider == "openrouter":
-        return OpenRouterProvider(
-            model=config.model,
-            api_key_env=config.api_key_env,
-        )
-    elif config.provider in ("openai", "anthropic", "google", "litellm"):
-        return DirectProvider(
-            model=config.model,
-            api_key_env=config.api_key_env,
-        )
-    else:
-        raise ValueError(f"Unsupported LLM provider: {config.provider}")
+def create_provider(cfg: ProviderConfig) -> LLMProvider:
+    if cfg.provider == "openrouter":
+        return OpenRouterProvider(model=cfg.model, api_key_env=cfg.api_key_env)
+    if cfg.provider in ("openai", "anthropic", "google", "litellm"):
+        return DirectProvider(model=cfg.model, api_key_env=cfg.api_key_env)
+    raise ValueError(f"Unsupported LLM provider: {cfg.provider}")
