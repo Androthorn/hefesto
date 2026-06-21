@@ -63,3 +63,32 @@ def test_better_candidate_is_promoted():
     result = loop.run("OKAY {{input}}", _split())
     assert result.champion == "BEST {{input}}"
     assert result.history[-1]["promoted"] is True
+
+
+def test_lineage_parent_version_tracks_real_champion():
+    # Iteration 1: "BETTER" is promoted (score 0.8 > seed 0.5)
+    # Iteration 2: "WORSE" is rejected (score 0.2 < champion 0.8)
+    # Expected lineage:
+    #   history[0]: parent_version="v1", candidate_version="v2", promoted=True
+    #   history[1]: parent_version="v2", candidate_version="v3", promoted=False
+    grader = ScriptedGrader({"SEED": 0.5, "BETTER": 0.8, "WORSE": 0.2})
+    refiner = ScriptedRefiner(["BETTER {{input}}", "WORSE {{input}}"])
+    cfg = LoopConfig(max_iter=2, patience=5, epsilon_k=0.0, target=None, headroom_min=0.0)
+    loop = RefineLoop(
+        runner=EchoRunner(), grader=grader, refiner=refiner,
+        objective=Objective(goal="g"), weights={"q": 1.0}, config=cfg,
+    )
+    result = loop.run("SEED {{input}}", _split())
+
+    assert result.champion == "BETTER {{input}}"
+    assert len(result.history) == 2
+
+    promoted_entry = result.history[0]
+    assert promoted_entry["promoted"] is True
+    assert promoted_entry["parent_version"] == "v1"
+    assert promoted_entry["candidate_version"] == "v2"
+
+    rejected_entry = result.history[1]
+    assert rejected_entry["promoted"] is False
+    assert rejected_entry["parent_version"] == "v2"
+    assert rejected_entry["candidate_version"] == "v3"

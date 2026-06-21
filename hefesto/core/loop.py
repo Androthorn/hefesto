@@ -70,14 +70,16 @@ class RefineLoop:
 
         fails = 0
         version = 1
+        champion_version = f"v{version}"
         for _ in range(self.config.max_iter):
             selected = select_contrast(champ_dev, self.config.k)
             candidate = self.refiner.propose(champion, selected, self.objective)
             version += 1
             cand_version = f"v{version}"
+            parent_version = champion_version
 
             if not check_invariants(candidate, self.objective.invariants):
-                self._log(history, cand_version, False, 0.0, "invariant_violation")
+                self._log(history, parent_version, cand_version, False, 0.0, "invariant_violation")
                 fails += 1
             else:
                 cand_test = self._eval(candidate, split.test)
@@ -87,10 +89,11 @@ class RefineLoop:
                     champ_dev = self._eval(candidate, split.dev)
                     champ_test = cand_test
                     champ_score = _mean_composite(champ_test)
-                    self._log(history, cand_version, True, delta, "promoted")
+                    self._log(history, parent_version, cand_version, True, delta, "promoted")
+                    champion_version = cand_version
                     fails = 0
                 else:
-                    self._log(history, cand_version, False, delta, "no_improvement")
+                    self._log(history, parent_version, cand_version, False, delta, "no_improvement")
                     fails += 1
 
             if fails >= self.config.patience:
@@ -100,12 +103,12 @@ class RefineLoop:
 
         return LoopResult(champion=champion, champion_score=champ_score, history=history)
 
-    def _log(self, history, cand_version, promoted, delta, reason):
-        entry = {"candidate_version": cand_version, "promoted": promoted,
-                 "delta": delta, "reason": reason}
+    def _log(self, history, parent_version, cand_version, promoted, delta, reason):
+        entry = {"parent_version": parent_version, "candidate_version": cand_version,
+                 "promoted": promoted, "delta": delta, "reason": reason}
         history.append(entry)
         if self.repo is not None:
             self.repo.save_refinement(
-                parent_version="champion", candidate_version=cand_version,
+                parent_version=parent_version, candidate_version=cand_version,
                 promoted=promoted, delta=delta, reason=reason,
             )
