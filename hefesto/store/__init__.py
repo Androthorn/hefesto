@@ -1,7 +1,7 @@
-"""Storage module for ADRS - persistence of runs, prompts, refinements, and evaluations."""
+"""Storage module for Hefesto - persistence of runs, prompts, refinements, and evaluations."""
 
-from hefesto.storage.models import Base, RunRecord, PromptRecord, RefinementRecord, EvaluationRecord
-from hefesto.storage.repository import Repository
+from hefesto.store.models import Base, RunRecord, PromptRecord, RefinementRecord, EvaluationRecord
+from hefesto.store.repository import Repository
 
 __all__ = [
     "Base",
