@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from adrs.llm.base import LLMProvider, LLMMessage, LLMResponse
+from hefesto.llm.base import LLMProvider, LLMMessage, LLMResponse
 
 
 class OpenRouterProvider(LLMProvider):
@@ -50,7 +50,7 @@ class OpenRouterProvider(LLMProvider):
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/adrs",  # Required by OpenRouter
+            "HTTP-Referer": "https://github.com/hefesto",  # Required by OpenRouter
         }
 
         payload: dict[str, Any] = {

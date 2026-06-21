@@ -1,9 +1,9 @@
 """Factory function for creating LLM providers."""
 
-from adrs.llm.base import LLMProvider
-from adrs.llm.openrouter import OpenRouterProvider
-from adrs.llm.direct import DirectProvider
-from adrs.schemas.config import LLMConfig
+from hefesto.llm.base import LLMProvider
+from hefesto.llm.openrouter import OpenRouterProvider
+from hefesto.llm.direct import DirectProvider
+from hefesto.schemas.config import LLMConfig
 
 
 def create_provider(config: LLMConfig) -> LLMProvider:

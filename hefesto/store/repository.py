@@ -6,10 +6,10 @@ from pathlib import Path
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from adrs.schemas.input import AgentPrompt, ExperimentRun, PromptTemplate
-from adrs.schemas.evaluation import EvaluationResult, ScoringResult
-from adrs.schemas.output import RefinementResult
-from adrs.storage.models import Base, EvaluationRecord, PromptRecord, RefinementRecord, RunRecord
+from hefesto.schemas.input import AgentPrompt, ExperimentRun, PromptTemplate
+from hefesto.schemas.evaluation import EvaluationResult, ScoringResult
+from hefesto.schemas.output import RefinementResult
+from hefesto.storage.models import Base, EvaluationRecord, PromptRecord, RefinementRecord, RunRecord
 
 
 class Repository:
@@ -206,7 +206,7 @@ class Repository:
         Returns:
             List of ExperimentRun objects
         """
-        from adrs.schemas.input import LogEntry, MetricStats
+        from hefesto.schemas.input import LogEntry, MetricStats
         
         with self._get_session() as session:
             stmt = (

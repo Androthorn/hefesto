@@ -10,16 +10,16 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from adrs import MODULE_NAME, __version__
-from adrs.core.analyzer import Analyzer
-from adrs.core.differ import Differ
-from adrs.core.evaluator import Evaluator
-from adrs.core.generator import Generator
-from adrs.core.selector import SolutionSelector
-from adrs.llm.factory import create_provider
-from adrs.schemas.config import ADRSConfig, LLMConfig
-from adrs.schemas.evaluation import EvaluationResult, ScoringWeights
-from adrs.schemas.input import (
+from hefesto import MODULE_NAME, __version__
+from hefesto.core.analyzer import Analyzer
+from hefesto.core.differ import Differ
+from hefesto.core.evaluator import Evaluator
+from hefesto.core.generator import Generator
+from hefesto.core.selector import SolutionSelector
+from hefesto.llm.factory import create_provider
+from hefesto.schemas.config import ADRSConfig, LLMConfig
+from hefesto.schemas.evaluation import EvaluationResult, ScoringWeights
+from hefesto.schemas.input import (
     AgentPrompt,
     ExperimentRun,
     LogEntry,
@@ -28,8 +28,8 @@ from adrs.schemas.input import (
     PromptTemplate,
     SuccessCriterion,
 )
-from adrs.storage.repository import Repository
-from adrs.core.importer import BaseImporter
+from hefesto.storage.repository import Repository
+from hefesto.core.importer import BaseImporter
 import importlib.util
 import sys
 import inspect
@@ -72,7 +72,7 @@ def init(
     ),
 ) -> None:
     """Initialize a new ADRS project with configuration and database."""
-    config_path = path / "adrs.yaml"
+    config_path = path / "hefesto.yaml"
     db_path = path / "adrs_history.db"
     
     # Check if already initialized
@@ -92,7 +92,7 @@ def init(
             yaml.dump(config.model_dump(), f, default_flow_style=False)
     except ImportError:
         # Fallback to JSON if yaml not available
-        config_path = path / "adrs.json"
+        config_path = path / "hefesto.json"
         with open(config_path, "w") as f:
             json.dump(config.model_dump(), f, indent=2)
     
@@ -265,7 +265,7 @@ def history(
 ) -> None:
     """View refinement history."""
     if not db_path.exists():
-        console.print("[yellow]No history database found. Run 'adrs init' first.[/yellow]")
+        console.print("[yellow]No history database found. Run 'hefesto init' first.[/yellow]")
         raise typer.Exit(1)
     
     repo = Repository(db_path)
@@ -321,7 +321,7 @@ def diff(
 ) -> None:
     """Compare two prompt versions."""
     if not db_path.exists():
-        console.print("[yellow]No history database found. Run 'adrs init' first.[/yellow]")
+        console.print("[yellow]No history database found. Run 'hefesto init' first.[/yellow]")
         raise typer.Exit(1)
     
     repo = Repository(db_path)
@@ -827,7 +827,7 @@ def evaluate_and_refine(
     # Build a synthetic analysis from the evaluation metrics
     analyzer = Analyzer(priority_metrics=objective_data.priority_metrics)
     # Create a minimal ExperimentRun for the analyzer
-    from adrs.schemas.input import ExperimentRun as ER
+    from hefesto.schemas.input import ExperimentRun as ER
     synth_run = ER(
         run_id=f"eval_iter_{iteration}",
         timestamp=datetime.now(),

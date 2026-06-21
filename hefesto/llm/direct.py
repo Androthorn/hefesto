@@ -4,7 +4,7 @@ import os
 
 import litellm
 
-from adrs.llm.base import LLMProvider, LLMMessage, LLMResponse
+from hefesto.llm.base import LLMProvider, LLMMessage, LLMResponse
 
 
 class DirectProvider(LLMProvider):

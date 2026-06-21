@@ -1,6 +1,6 @@
 """Schema definitions for ADRS input/output validation."""
 
-from adrs.schemas.input import (
+from hefesto.schemas.input import (
     MetricStats,
     LogEntry,
     ExperimentRun,
@@ -8,18 +8,18 @@ from adrs.schemas.input import (
     AgentPrompt,
     Objective,
 )
-from adrs.schemas.output import (
+from hefesto.schemas.output import (
     DiffEntry,
     PromptDiff,
     RefinementResult,
 )
-from adrs.schemas.evaluation import (
+from hefesto.schemas.evaluation import (
     ScoringWeights,
     MetricScore,
     ScoringResult,
     EvaluationResult,
 )
-from adrs.schemas.config import ADRSConfig, LLMConfig, StorageConfig
+from hefesto.schemas.config import ADRSConfig, LLMConfig, StorageConfig
 
 __all__ = [
     # Input schemas

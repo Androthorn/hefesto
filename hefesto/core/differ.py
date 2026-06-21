@@ -2,8 +2,8 @@
 
 import difflib
 
-from adrs.schemas.input import PromptTemplate
-from adrs.schemas.output import DiffEntry, PromptDiff
+from hefesto.schemas.input import PromptTemplate
+from hefesto.schemas.output import DiffEntry, PromptDiff
 
 
 class Differ:

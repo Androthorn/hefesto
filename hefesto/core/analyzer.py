@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from adrs.schemas.input import ExperimentRun, MetricStats, Objective
+from hefesto.schemas.input import ExperimentRun, MetricStats, Objective
 
 
 @dataclass

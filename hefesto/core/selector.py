@@ -4,8 +4,8 @@ Queries stored evaluation results and selects past solutions to feed
 back into the Prompt Generator for context-aware refinement.
 """
 
-from adrs.schemas.evaluation import EvaluationResult
-from adrs.storage.repository import Repository
+from hefesto.schemas.evaluation import EvaluationResult
+from hefesto.storage.repository import Repository
 
 
 class SolutionSelector:

@@ -9,13 +9,13 @@ import glob
 import shutil
 from pathlib import Path
 
-from adrs.schemas.evaluation import (
+from hefesto.schemas.evaluation import (
     EvaluationResult,
     MetricScore,
     ScoringResult,
     ScoringWeights,
 )
-from adrs.schemas.input import MetricStats, Objective
+from hefesto.schemas.input import MetricStats, Objective
 
 
 # Metrics that the evaluator knows how to score.

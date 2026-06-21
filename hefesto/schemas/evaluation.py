@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from adrs.schemas.input import MetricStats
+from hefesto.schemas.input import MetricStats
 
 
 class ScoringWeights(BaseModel):

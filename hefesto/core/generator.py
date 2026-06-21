@@ -4,11 +4,11 @@ import json
 import re
 from typing import Any
 
-from adrs.core.analyzer import AnalysisResult
-from adrs.core.differ import Differ
-from adrs.llm.base import LLMProvider, LLMMessage
-from adrs.schemas.input import AgentPrompt, Objective, PromptTemplate
-from adrs.schemas.output import RefinementResult, PromptDiff
+from hefesto.core.analyzer import AnalysisResult
+from hefesto.core.differ import Differ
+from hefesto.llm.base import LLMProvider, LLMMessage
+from hefesto.schemas.input import AgentPrompt, Objective, PromptTemplate
+from hefesto.schemas.output import RefinementResult, PromptDiff
 
 
 # System prompt for the refinement LLM

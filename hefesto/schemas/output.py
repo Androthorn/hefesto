@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from adrs.schemas.input import PromptTemplate
+from hefesto.schemas.input import PromptTemplate
 
 
 class DiffEntry(BaseModel):

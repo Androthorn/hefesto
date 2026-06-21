@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from adrs.schemas.input import ExperimentRun
+from hefesto.schemas.input import ExperimentRun
 
 
 class BaseImporter(ABC):
