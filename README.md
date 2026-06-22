@@ -38,7 +38,7 @@ cd my-project
 hefesto refine --config hefesto.yaml
 ```
 
-**New here?** [docs/how-it-works.md](docs/how-it-works.md) walks one `hefesto refine`
+**New here?** [how-it-works.md](how-it-works.md) walks one `hefesto refine`
 end-to-end with concrete example values — dataset, scoring, a promoted iteration,
 a rejected one, and the audit trail — so you can see exactly what the loop does.
 

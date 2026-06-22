@@ -3,7 +3,7 @@
 > **Audience**: contributors, plugin authors, and agents working with this codebase.
 >
 > For a narrated end-to-end walkthrough of a typical run (with example values at
-> every stage), see [docs/how-it-works.md](docs/how-it-works.md). This guide is
+> every stage), see [how-it-works.md](how-it-works.md). This guide is
 > the component reference.
 
 ---

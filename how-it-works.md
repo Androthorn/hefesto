@@ -3,7 +3,7 @@
 This walks one `hefesto refine` from start to finish with concrete example
 values, so you can see exactly what happens at each stage. For the component
 reference (the four seams, interfaces, persistence schema) see
-[GUIDE.md](../GUIDE.md).
+[GUIDE.md](GUIDE.md).
 
 > The numbers below are illustrative — a realistic shape of one run, not output
 > from a fixed seed.

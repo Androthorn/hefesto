@@ -37,10 +37,16 @@ env/
 *.swo
 *~
 
-# ADRS specific
+# Hefesto local artifacts
 *.db
-adrs_history.db
-refined_prompts/
+hefesto.db
+
+# Local-only dev docs (design specs, plans, WASP-era history) — kept out of the
+# public repo but available locally for development.
+docs/
+
+# SDD workflow scratch
+.superpowers/
 
 # Environment variables
 .env
