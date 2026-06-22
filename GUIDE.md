@@ -1,6 +1,10 @@
 # Hefesto — Developer Guide
 
 > **Audience**: contributors, plugin authors, and agents working with this codebase.
+>
+> For a narrated end-to-end walkthrough of a typical run (with example values at
+> every stage), see [docs/how-it-works.md](docs/how-it-works.md). This guide is
+> the component reference.
 
 ---
 
@@ -50,7 +54,7 @@ All scores are pinned to `[0, 1]` by a normalizer (`normalize_absolute` maps a 1
 
 **Interface** (`hefesto/refiner/refiner.py`): `.propose(champion_prompt, selected_cases, objective) -> str`
 
-The `Refiner` receives the champion prompt and a list of contrast cases (the `k` worst-performing on the dev split). It is instructed to:
+The `Refiner` receives the champion prompt and a list of contrast cases — the `k` **best** and `k` **worst**-performing dev cases (`select_contrast`), so it sees both what works and what fails. It is instructed to:
 
 - Prefer a concrete few-shot example drawn from a real failing case over adding rules.
 - Not add nested legalistic rules (patterns like `1.a`, `1.b` are detected and penalised).
@@ -113,7 +117,7 @@ Key properties:
 - **Paired scoring**: delta is computed per test-case pair, not mean vs mean. This eliminates case-difficulty confounds.
 - **Headroom guard**: if the champion already scores within `headroom_min` of the ceiling, the loop exits immediately. There is nothing to improve.
 - **Invariant check**: any candidate that violates a declared invariant (e.g. drops the `{{input}}` placeholder) is rejected before evaluation — no LLM call wasted.
-- **Full audit trail**: every attempt (promoted and rejected) is persisted with `parent_version`, `candidate_version`, `delta`, and `reason`. Query with `hefesto history`.
+- **Full audit trail**: every attempt (promoted and rejected) is persisted to the `refinements` table with `parent_version`, `candidate_version`, `delta`, and `reason`. In v1, query it directly via `sqlite3` (the `hefesto history`/`diff` commands are scaffolded stubs slated for a follow-on).
 
 ---
 
