@@ -18,7 +18,7 @@ refine → repeat — and what makes it more than "ask a chatbot to fix my promp
 is four earned strengths it leads with:
 
 1. **It refines without bloating** — concrete few-shot examples from real
-   failures, not stacked rules (the `FINDINGS.md` lesson).
+   failures, not stacked rules (the `docs/history/findings-wasp-era.md` lesson).
 2. **It never ships a regression** — champion/challenger promotion on a held-out
    test set; a new version wins only if it provably beats the best so far.
 3. **It shows its work** — a full audit trail of every attempt and why it lost.
@@ -48,7 +48,7 @@ The old K8s simulation scoring is demoted to **one follow-on example plugin**
 - Know when to stop: detect "this prompt is already strong — nothing to forge"
   rather than shipping a worse prompt with a confident score.
 - Treat user-supplied / real metrics as the **gold path**, not a footnote.
-- Encode the lessons already learned (see `FINDINGS.md`): few-shot refinement
+- Encode the lessons already learned (see `docs/history/findings-wasp-era.md`): few-shot refinement
   over rule-stacking, never promoting a candidate on noise, and never trusting a
   single data point.
 - Provider-agnostic: the user explicitly chooses provider + model; none baked in.
@@ -270,7 +270,7 @@ The product spine — `loop`, `runner`, `dataset/generate`, `llm_judge`,
 
 ## Refiner Strategy & Champion/Challenger Loop
 
-Encodes the `FINDINGS.md` lessons so Hefesto does not repeat the v2/v3
+Encodes the `docs/history/findings-wasp-era.md` lessons so Hefesto does not repeat the v2/v3
 degradation spiral.
 
 ### Refiner (how a better prompt is proposed)
@@ -339,7 +339,7 @@ Design choices that fix the tríade findings:
   the same cases; promotion uses the mean of per-case deltas, not two
   independently-measured scalars.
 - **Margin in std units.** `epsilon_k` (default tunable, e.g. `1.0`) times the
-  pooled per-case std — because `FINDINGS.md` measured run-to-run std of
+  pooled per-case std — because `docs/history/findings-wasp-era.md` measured run-to-run std of
   0.07–0.18 even on a deterministic scorer. A fixed `0.02` absolute margin would
   both promote on noise and reject real gains.
 - **`judge_samples`.** Each case is judged N times and averaged (default N=1 for
@@ -432,7 +432,7 @@ load with the role name. This is a small config rewrite, not a port.
 | `runs` | raw per-case outputs (input, output, metrics) | stores Hefesto's own executor outputs |
 
 Persisting rejected candidates is what makes the rollback lineage fully
-reconstructable — the automated form of what `FINDINGS.md` did by hand, and the
+reconstructable — the automated form of what `docs/history/findings-wasp-era.md` did by hand, and the
 data a future frontend "refinement journey" view would read.
 
 ## Testing Strategy
