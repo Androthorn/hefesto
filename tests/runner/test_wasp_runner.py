@@ -19,7 +19,7 @@ def _make_env(tmp_path):
 
 def _fake_cmd_factory(runs_dir):
     def fake(cmd, **kwargs):
-        dest = Path(cmd[3])  # bash run_one_replica.sh <prompt> <config> <dest>
+        dest = Path(cmd[4])  # bash run_one_replica.sh <prompt> <config> <dest>
         (dest / "analyzer" / "summary").mkdir(parents=True, exist_ok=True)
         (dest / "analyzer" / "summary" / "summary_metrics_x.csv").write_text(
             ",mean,min,max,std,median\ncost,0.04,0,0,0,0\n")

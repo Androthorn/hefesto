@@ -42,7 +42,7 @@ class WASPRunner:
         env["RESET_MODE"] = self.reset_mode
         prompt_name = f"workshop/cand_{sha8}"  # nome SEM .txt, relativo a prompts/
         self.runner_cmd(
-            ["bash", str(self.replica_script), prompt_name, str(dest), str(self.config_path)],
+            ["bash", str(self.replica_script), prompt_name, str(self.config_path), str(dest)],
             env=env,
         )
 
