@@ -70,3 +70,20 @@ def test_missing_csv_raises(tmp_path):
     runner = WASPRunner(root, cfg, runs, runner_cmd=cmd_no_csv)
     with pytest.raises(RunnerError):
         runner.run("X", TestCase(input="", metadata={"replica": 4}))
+
+
+def test_nonzero_returncode_raises(tmp_path):
+    root, runs, cfg = _make_env(tmp_path)
+    def cmd_fail(cmd, **kwargs):
+        class R: returncode = 1
+        return R()
+    runner = WASPRunner(root, cfg, runs, runner_cmd=cmd_fail)
+    with pytest.raises(RunnerError):
+        runner.run("X", TestCase(input="", metadata={"replica": 9}))
+
+
+def test_empty_prompt_raises(tmp_path):
+    root, runs, cfg = _make_env(tmp_path)
+    runner = WASPRunner(root, cfg, runs, runner_cmd=_fake_cmd_factory(runs))
+    with pytest.raises(RunnerError):
+        runner.run("   ", TestCase(input="", metadata={"replica": 10}))

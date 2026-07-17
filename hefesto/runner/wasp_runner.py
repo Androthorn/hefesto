@@ -30,9 +30,10 @@ class WASPRunner:
     def run(self, prompt: str, case: TestCase) -> Output:
         sha8 = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:8]
         self.workshop_dir.mkdir(parents=True, exist_ok=True)
+        if not prompt.strip():
+            raise RunnerError("prompt candidato vazio — abortando (acidente de fevereiro)")
         cand = self.workshop_dir / f"cand_{sha8}.txt"
         cand.write_text(prompt, encoding="utf-8")
-        assert cand.read_text(encoding="utf-8"), "prompt candidato vazio — abortando (acidente de fevereiro)"
 
         replica = case.metadata.get("replica", 0)
         dest = self.runs_dir / f"{case.input or 'r'}_{sha8}_{replica}"
@@ -41,10 +42,12 @@ class WASPRunner:
         env = dict(os.environ)
         env["RESET_MODE"] = self.reset_mode
         prompt_name = f"workshop/cand_{sha8}"  # nome SEM .txt, relativo a prompts/
-        self.runner_cmd(
+        result = self.runner_cmd(
             ["bash", str(self.replica_script), prompt_name, str(self.config_path), str(dest)],
             env=env,
         )
+        if getattr(result, "returncode", 0) != 0:
+            raise RunnerError(f"run_one_replica.sh falhou (returncode={result.returncode}) em {dest}")
 
         csvs = sorted((dest / "analyzer" / "summary").glob("summary_metrics_*.csv"))
         if not csvs:
