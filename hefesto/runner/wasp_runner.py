@@ -40,7 +40,7 @@ class WASPRunner:
         dest.mkdir(parents=True, exist_ok=True)
 
         env = dict(os.environ)
-        env["RESET_MODE"] = self.reset_mode
+        env["RESET_MODE"] = case.metadata.get("reset_mode", self.reset_mode)
         prompt_name = f"workshop/cand_{sha8}"  # nome SEM .txt, relativo a prompts/
         result = self.runner_cmd(
             ["bash", str(self.replica_script), prompt_name, str(self.config_path), str(dest)],
