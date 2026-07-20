@@ -12,6 +12,7 @@ Sem scipy no ambiente, a t inversa vem de `_t_ppf` (beta incompleta regularizada
 por fracao continuada + bisseccao), validada contra tabela em tests/core/.
 """
 import math
+from functools import lru_cache
 import statistics
 
 
@@ -70,10 +71,16 @@ def _t_cdf(t: float, df: float) -> float:
     return 1.0 - tail if t >= 0.0 else tail
 
 
+@lru_cache(maxsize=4096)
 def _t_ppf(p: float, df: float) -> float:
-    """Inversa da CDF da t, por bisseccao."""
+    """Inversa da CDF da t, por bisseccao.
+
+    Sai quando o intervalo cai abaixo da resolucao de float (~50 iteracoes);
+    iterar alem disso so queima tempo, e o resampling chama isto milhares de
+    vezes. O cache ajuda porque divisoes repetidas caem em df identicos.
+    """
     lo, hi = -1000.0, 1000.0
-    for _ in range(200):
+    while hi - lo > 1e-12:
         mid = 0.5 * (lo + hi)
         if _t_cdf(mid, df) < p:
             lo = mid
@@ -108,3 +115,23 @@ def should_promote(cand: list[float], champ: list[float],
                    delta_min: float, alpha: float = 0.05) -> bool:
     """Promove sse o ganho e confiavelmente maior que delta_min."""
     return welch_lower_bound(cand, champ, alpha) > delta_min
+
+
+def legacy_epsilon_sigma_rule(cand: list[float], champ: list[float],
+                              epsilon: float = 1.0) -> bool:
+    """A regra ANTIGA, com os defeitos preservados. NAO usar para promover.
+
+    Existe so para o resampling: a comparacao entre as duas regras tem de
+    rodar sobre os mesmos dados, com a regra criticada implementada como
+    era. Portada de loop.py@3c8c001 (paired_mean / pooled_std).
+
+    Os dois defeitos, fixados por tests/core/test_legacy_rule.py:
+      - pareia por zip, entao o veredito depende da ordem das replicas;
+      - o limiar e epsilon * sigma, sem n: mais replicas nao compram nada.
+    """
+    deltas = [c - p for c, p in zip(cand, champ)]
+    if not deltas:
+        return False
+    mean = sum(deltas) / len(deltas)
+    sigma = statistics.pstdev(deltas) if len(deltas) >= 2 else 0.0
+    return mean > epsilon * sigma
