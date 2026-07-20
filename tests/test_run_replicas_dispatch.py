@@ -2,7 +2,9 @@ import importlib
 import sys
 from pathlib import Path
 
-ROOT = Path("/home/andre/projetos")
+# Os runners foram versionados dentro de simulatormeu/ (antes viviam soltos na raiz
+# de projetos/, que nao e repositorio e portanto nao dava proveniencia a eles).
+ROOT = Path("/home/andre/projetos/simulatormeu")
 
 
 def _mod():
