@@ -35,6 +35,8 @@ class LoopConfig(BaseModel):
     patience: int = 2
     k: int = 3
     epsilon_k: float = 1.0
+    delta_min: float = 0.0
+    alpha: float = 0.05
     judge_samples: int = 1
     target: float | None = None
     headroom_min: float = 0.05

@@ -1,4 +1,3 @@
-import statistics
 from pydantic import BaseModel
 from hefesto.schemas.core import ScoredResult, Objective
 from hefesto.dataset.base import DatasetSplit
@@ -7,6 +6,7 @@ from hefesto.score.aggregate import composite_score
 from hefesto.refiner.select import select_contrast
 from hefesto.refiner.invariants import check_invariants
 from hefesto.core.intake import no_headroom
+from hefesto.core.gate import should_promote
 
 
 class LoopResult(BaseModel):
@@ -27,14 +27,10 @@ def evaluate(prompt, cases, runner, grader, objective, weights) -> list[ScoredRe
     return results
 
 
-def paired_mean(cand: list[ScoredResult], champ: list[ScoredResult]) -> float:
-    deltas = [c.composite - p.composite for c, p in zip(cand, champ)]
-    return sum(deltas) / len(deltas) if deltas else 0.0
-
-
-def pooled_std(cand: list[ScoredResult], champ: list[ScoredResult]) -> float:
-    deltas = [c.composite - p.composite for c, p in zip(cand, champ)]
-    return statistics.pstdev(deltas) if len(deltas) >= 2 else 0.0
+def unpaired_delta(cand: list[ScoredResult], champ: list[ScoredResult]) -> float:
+    """Diferenca das medias dos dois bracos. Nao pareia: replicas sao
+    sorteios independentes, nao compartilham caso de teste."""
+    return _mean_composite(cand) - _mean_composite(champ)
 
 
 def _mean_composite(results: list[ScoredResult]) -> float:
@@ -83,8 +79,11 @@ class RefineLoop:
                 fails += 1
             else:
                 cand_test = self._eval(candidate, split.test)
-                delta = paired_mean(cand_test, champ_test)
-                if delta > self.config.epsilon_k * pooled_std(cand_test, champ_test):
+                delta = unpaired_delta(cand_test, champ_test)
+                if should_promote([r.composite for r in cand_test],
+                                  [r.composite for r in champ_test],
+                                  delta_min=self.config.delta_min,
+                                  alpha=self.config.alpha):
                     champion = candidate
                     champ_dev = self._eval(candidate, split.dev)
                     champ_test = cand_test
