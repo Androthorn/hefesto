@@ -5,26 +5,32 @@ from pathlib import Path
 ROOT = Path("/home/andre/projetos")
 
 
-def test_replica_one_full_rest_light(monkeypatch, tmp_path):
+def _mod():
     sys.path.insert(0, str(ROOT))
-    rr = importlib.import_module("run_replicas")
+    return importlib.import_module("run_replicas")
 
-    calls = []
 
-    class FakeRunner:
-        def __init__(self, *a, **k):
-            pass
-
-        def run(self, prompt, case):
-            calls.append((case.metadata["replica"], case.metadata["reset_mode"]))
-            raise rr.__dict__.get("_StopForTest", KeyboardInterrupt)()
-
-    # Force every replica to be "todo" and stub the heavy bits.
-    monkeypatch.setattr(rr, "_is_complete", lambda dest: False)
-    monkeypatch.setattr(rr, "preflight", lambda: [])
-    monkeypatch.setattr(rr, "WASPRunner", FakeRunner, raising=False)
-    # Point the batch at a temp dir so nothing real is touched.
-    monkeypatch.setattr(rr, "RUNS", tmp_path, raising=False)
-
+def test_replica_one_full_rest_light():
+    rr = _mod()
     modes = rr.dispatch_modes(k=4)
     assert modes == ["full", "light", "light", "light"]
+
+
+def test_refuses_light_replicas_into_frozen_p0_batch(monkeypatch, capsys):
+    rr = _mod()
+    monkeypatch.setattr(rr, "_is_complete", lambda dest: False)  # força todas como "a rodar"
+    monkeypatch.setattr("sys.argv", ["run_replicas.py", "-k", "3"])  # default --batch p0_batch
+    rc = rr.main()
+    assert rc != 0
+    assert "p0_batch" in capsys.readouterr().err
+
+
+def test_does_not_refuse_non_default_batch(monkeypatch, capsys):
+    rr = _mod()
+    monkeypatch.setattr(rr, "_is_complete", lambda dest: False)  # força todas como "a rodar"
+    monkeypatch.setattr(
+        "sys.argv", ["run_replicas.py", "-k", "3", "--batch", "p0_light_cert"]
+    )
+    rc = rr.main()
+    assert rc == 0
+    assert capsys.readouterr().err == ""
