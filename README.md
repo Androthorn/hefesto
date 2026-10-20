@@ -1,17 +1,66 @@
 # Hefesto
 
-> Bring raw ore — a prompt and a goal — and leave with a tempered one that provably outperforms what you came with.
+Hefesto is an evaluation-first prompt-refinement CLI. Given a prompt and an objective, it proposes candidate prompts, scores each one on a held-out test split, and promotes a candidate to champion only if a statistical gate says it beats the current champion by a stated margin. Every attempt, promoted or rejected, is stored with its parent version, delta and reason. Provider, runner, grader and refiner are separate seams, so each can be replaced without touching the loop; a non-LLM echo runner is included for smoke tests.
 
-Hefesto is an evaluation-first prompt-refinement CLI. It scores before it ships, never promotes a regression, and leaves a full audit trail of every attempt — promoted or rejected.
+## Hefesto in the UCC 2026 paper
 
-## Four Earned Strengths
+Hefesto is the instrument of the live experiment in "When a Better Prompt Is Just Noise in LLM-Driven Cloud Orchestration" (UCC 2026). The paper argues that promoting a stochastic agent's prompt on raw scores from a few runs promotes noise.
 
-1. **Refines without bloating** — the refiner prefers a concrete few-shot example drawn from a real failing case over adding nested rules. Nested legalistic rule patterns are detected and discouraged.
-2. **Never ships a regression** — every candidate is scored on a held-out test split. Promotion requires a statistically positive delta (paired mean in standard units). No delta, no promotion.
-3. **Shows its work** — every iteration is persisted: parent version, candidate version, delta, promotion status, and reason. The full history survives across runs.
-4. **Never breaks your pipeline** — provider, runner, grader, and refiner are seams. Any component can be swapped without touching the loop logic. A non-LLM echo runner ships in the box for smoke-testing.
+- The paper's Phase 2 refinement loop ran on an earlier, ADRS-based version of this repository, tag `v0.1.0`. Its contemporaneous notes are in the git history at commit `dd2011e` (`FINDINGS.md`).
+- The promotion gate described below (`hefesto/core/gate.py`) and the false-promotion resampling (`hefesto/core/resample.py`) were added afterwards, on top of that history.
+- The experiment code and data live in https://github.com/Androthorn/simulator-ucc.
 
-## Signal Trust Ladder
+### How to cite
+
+```
+Andre Cunha, Giovanni Farias, Fabio Morais.
+"When a Better Prompt Is Just Noise in LLM-Driven Cloud Orchestration."
+IEEE/ACM Utility and Cloud Computing (UCC 2026), Federal University of Campina Grande.
+DOI: TODO. Pages: TODO.
+```
+
+## Promotion rule
+
+`should_promote` in `hefesto/core/gate.py` runs an unpaired, one-sided Welch test with a margin. It promotes a candidate if and only if the lower bound of the one-sided (1 - alpha) confidence interval on `mean(cand) - mean(champ)` is greater than `delta_min`:
+
+```
+lower bound = (mean_c - mean_p) - t_{1-alpha, nu} * sqrt(s_c^2/n_c + s_p^2/n_p)
+promote iff lower bound > delta_min
+```
+
+`nu` is the Welch-Satterthwaite degrees of freedom (`welch_lower_bound`). The two arms are independent samples, so the verdict does not depend on the order of the replicas. Each arm needs at least 2 samples. `RefineLoop` (`hefesto/core/loop.py`) applies it to the per-case composite scores of the candidate and the champion on the test split.
+
+| Parameter | Meaning | Paper value |
+|-----------|---------|-------------|
+| `k` | replicas per arm | 12 |
+| `delta_min` | minimum gain the lower bound must exceed | 0.05 |
+| `alpha` | one-sided significance level | 0.05 |
+
+The previous rule was `paired_mean(cand, champ) > epsilon_k * pooled_std`. It paired independent replicas by order (`zip`) and its threshold contained no `n`, so more replicas never bought confidence, and its false-promotion rate was an uncontrolled function of `k`. It is kept as `legacy_epsilon_sigma_rule` only so `hefesto/core/resample.py` can estimate false-promotion rates of the naive, legacy and gate rules on the same null replicas (`false_promotion_rates`). Do not use it to promote.
+
+Note: in `hefesto.yaml`, `loop.k` is passed to `select_contrast` (how many best and worst dev cases the refiner sees). The `k = 12` replicas per arm of the paper is the number of replicas the experiment collects per arm, not a separate loop setting.
+
+## Running with the WASP simulator
+
+`WASPRunner` (`hefesto/runner/wasp_runner.py`) and `StabilityGrader` (`hefesto/grader/stability_grader.py`) need a checkout of simulator-ucc (https://github.com/Androthorn/simulator-ucc).
+
+`WASPRunner(simulatormeu_root, config_path, runs_dir, reset_mode="full")`, one call to `run(prompt, case)` runs one replica:
+
+- It writes the candidate prompt to `<root>/ai-engine/prompts/workshop/cand_<sha8>.txt`, where `sha8` is the first 8 hex digits of the SHA-256 of the prompt. An empty prompt raises `RunnerError`.
+- It runs `bash <root>/run_one_replica.sh workshop/cand_<sha8> <config_path> <dest>` with `RESET_MODE` in the environment, where `<dest>` is `<runs_dir>/<case.input or "r">_<sha8>_<replica>` (`replica` and `reset_mode` come from `case.metadata`, defaulting to 0 and the constructor value).
+- A non-zero exit code, or no `<dest>/analyzer/summary/summary_metrics_*.csv`, raises `RunnerError`. Otherwise it returns an `Output` whose `text` and `metadata["csv"]` are the path of the last such CSV; `metadata` also carries `run_dir` and `provenance`, and `model` is read from `<dest>/provenance.json` if present.
+
+`StabilityGrader.grade(case, output, objective)` reads `output.metadata["csv"]` (columns: unnamed metric-name index, and `mean`) and needs the rows `pending_pods`, `time_with_pending`, `cost` and `number_of_migrations`; a missing row raises `KeyError`. It returns `Metrics(scores={"stability": S})`, where `S = stability_score(means)` from `hefesto/scoring/ucc_scoring.py`:
+
+```
+S = sum over metrics of  w * max(0, 1 - v / b)
+pending_pods          w=0.35  b=100
+time_with_pending     w=0.25  b=1.0
+cost                  w=0.25  b=0.1 - 0.0224   (v = max(0, cost - 0.0224))
+number_of_migrations  w=0.15  b=200
+```
+
+## Signal trust ladder
 
 Hefesto evaluates confidence from the most to least reliable signal:
 
@@ -79,12 +128,16 @@ grader: llm_judge               # llm_judge | (future: verifiable_judge, real_me
 loop:
   max_iter: 5
   patience: 2
-  k: 3                          # contrast cases sent to the refiner
-  epsilon_k: 1.0                # promotion threshold in std units
+  k: 12                         # contrast cases sent to the refiner (select_contrast)
+  delta_min: 0.05               # promotion margin on the gain, in score units
+  alpha: 0.05                   # one-sided significance level of the promotion gate
   headroom_min: 0.05            # skip loop if champion is already close to ceiling
 
 store_path: ./hefesto.db
 ```
+
+`epsilon_k` is still accepted by the config schema but the promotion gate does not
+use it.
 
 ## Objective (`objective.yaml`)
 
@@ -119,4 +172,4 @@ pip install -e ".[dev]"
 
 ## License
 
-MIT
+Apache License 2.0. See [LICENSE](LICENSE).
