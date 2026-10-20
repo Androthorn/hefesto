@@ -102,7 +102,7 @@ seed_prompt  →  evaluate on dev  →  evaluate on test  →  champ_score
                     ▼
               evaluate candidate on test
                     │
-              paired_mean(candidate, champion) > epsilon_k * pooled_std ?
+              welch_lower_bound(candidate, champion, alpha) > delta_min ?
                     │
               YES → promote candidate to champion
               NO  → discard; increment patience counter
@@ -114,7 +114,14 @@ seed_prompt  →  evaluate on dev  →  evaluate on test  →  champ_score
 Key properties:
 
 - **Branch-from-champion**: every candidate is proposed starting from the current champion, never from a rejected attempt.
-- **Paired scoring**: delta is computed per test-case pair, not mean vs mean. This eliminates case-difficulty confounds.
+- **Unpaired promotion gate**: `should_promote` (`hefesto/core/gate.py`) promotes iff the lower bound of the one-sided (1-alpha) confidence interval on `mean(cand) - mean(champ)` exceeds `delta_min`:
+
+  ```
+  lower bound = (mean_c - mean_p) - t_{1-alpha, nu} * sqrt(s_c^2/n_c + s_p^2/n_p)
+  promote iff lower bound > delta_min
+  ```
+
+  `nu` comes from the Welch-Satterthwaite approximation. The two arms are treated as independent samples; nothing is paired by position. This replaced the earlier rule `paired_mean > epsilon_k * pooled_std`, which zipped independent replicas by order (the verdict depended on replica order) and whose threshold contained no `n` (more replicas never bought confidence). Defaults: `delta_min: 0.05`, `alpha: 0.05`. `epsilon_k` is still accepted in configs but is no longer used.
 - **Headroom guard**: if the champion already scores within `headroom_min` of the ceiling, the loop exits immediately. There is nothing to improve.
 - **Invariant check**: any candidate that violates a declared invariant (e.g. drops the `{{input}}` placeholder) is rejected before evaluation — no LLM call wasted.
 - **Full audit trail**: every attempt (promoted and rejected) is persisted to the `refinements` table with `parent_version`, `candidate_version`, `delta`, and `reason`. In v1, query it directly via `sqlite3` (the `hefesto history`/`diff` commands are scaffolded stubs slated for a follow-on).
