@@ -15,8 +15,8 @@ Hefesto is the instrument of the live experiment in "When a Better Prompt Is Jus
 ```
 Andre Cunha, Giovanni Farias, Fabio Morais.
 "When a Better Prompt Is Just Noise in LLM-Driven Cloud Orchestration."
-IEEE/ACM Utility and Cloud Computing (UCC 2026), Federal University of Campina Grande.
-DOI: TODO. Pages: TODO.
+In Proc. IEEE/ACM International Conference on Utility and Cloud Computing (UCC 2026),
+Florianópolis, Brazil, 2026. DOI: TODO. Pages: TODO.
 ```
 
 ## Promotion rule
