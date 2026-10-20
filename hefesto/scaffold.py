@@ -24,8 +24,9 @@ judge:
 loop:
   max_iter: 5
   patience: 2
-  k: 3
-  epsilon_k: 1.0
+  k: 12  # replicas per arm
+  delta_min: 0.05  # minimum improvement a candidate must beat
+  alpha: 0.05  # one-sided significance level of the promotion gate
   judge_samples: 1
   headroom_min: 0.05
 

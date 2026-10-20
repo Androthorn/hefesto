@@ -34,8 +34,8 @@ class LoopConfig(BaseModel):
     max_iter: int = 5
     patience: int = 2
     k: int = 3
-    epsilon_k: float = 1.0
-    delta_min: float = 0.0
+    epsilon_k: float = 1.0  # unused by the promotion gate; kept for backward compatibility with old configs
+    delta_min: float = 0.05
     alpha: float = 0.05
     judge_samples: int = 1
     target: float | None = None
