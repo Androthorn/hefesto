@@ -3,6 +3,7 @@ name = "hefesto"
 version = "0.2.0"
 description = "Hefesto - evaluation-first prompt-refinement tool"
 readme = "README.md"
+license = "Apache-2.0"
 requires-python = ">=3.10"
 dependencies = [
     "typer>=0.9.0",
