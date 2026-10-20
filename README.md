@@ -32,13 +32,13 @@ promote iff lower bound > delta_min
 
 | Parameter | Meaning | Paper value |
 |-----------|---------|-------------|
-| `k` | replicas per arm | 12 |
+| samples per arm | test-split cases scored per prompt (`test_fraction` of the dataset); each is one replica | 12 |
 | `delta_min` | minimum gain the lower bound must exceed | 0.05 |
 | `alpha` | one-sided significance level | 0.05 |
 
 The previous rule was `paired_mean(cand, champ) > epsilon_k * pooled_std`. It paired independent replicas by order (`zip`) and its threshold contained no `n`, so more replicas never bought confidence, and its false-promotion rate was an uncontrolled function of `k`. It is kept as `legacy_epsilon_sigma_rule` only so `hefesto/core/resample.py` can estimate false-promotion rates of the naive, legacy and gate rules on the same null replicas (`false_promotion_rates`). Do not use it to promote.
 
-Note: in `hefesto.yaml`, `loop.k` is passed to `select_contrast` (how many best and worst dev cases the refiner sees). The `k = 12` replicas per arm of the paper is the number of replicas the experiment collects per arm, not a separate loop setting.
+`loop.k` in `hefesto.yaml` is not the sample size: it is how many best and worst dev cases `select_contrast` shows the refiner. The gate's n per arm is the number of test-split cases, so with the WASP runner, where each case is one simulation replica, the paper's 12 replicas per arm means 12 test cases.
 
 ## Running with the WASP simulator
 
@@ -128,7 +128,7 @@ grader: llm_judge               # llm_judge | (future: verifiable_judge, real_me
 loop:
   max_iter: 5
   patience: 2
-  k: 12                         # contrast cases sent to the refiner (select_contrast)
+  k: 3                          # best and worst dev cases sent to the refiner (select_contrast)
   delta_min: 0.05               # promotion margin on the gain, in score units
   alpha: 0.05                   # one-sided significance level of the promotion gate
   headroom_min: 0.05            # skip loop if champion is already close to ceiling

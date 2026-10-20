@@ -40,7 +40,7 @@ invariants:
 ```yaml
 dataset: { source: generate, count: 20, test_fraction: 0.4 }
 grader: llm_judge
-loop:   { max_iter: 5, patience: 2, k: 12, delta_min: 0.05, alpha: 0.05, headroom_min: 0.05 }
+loop:   { max_iter: 5, patience: 2, k: 3, delta_min: 0.05, alpha: 0.05, headroom_min: 0.05 }
 ```
 
 You run:
@@ -107,8 +107,7 @@ tell you there's nothing to forge.)*
 ## 3. Iteration 1 — a candidate is promoted
 
 **Select contrast cases.** `select_contrast(dev_results, k)` picks the **k best
-and k worst** dev cases (here the 12-case dev split is small enough that the two
-sets overlap; the walkthrough shows 3 of each for brevity) — high-contrast examples of what works and what doesn't.
+and k worst** dev cases (here 3 and 3) — high-contrast examples of what works and what doesn't.
 The worst include the rambling oatmeal-style answers (~0.55); the best include
 the crisp factual ones (~0.97).
 
