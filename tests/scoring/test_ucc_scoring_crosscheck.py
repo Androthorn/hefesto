@@ -1,13 +1,20 @@
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 from hefesto.scoring import ucc_scoring as hef
+
+_ANALYSIS_PATH = Path(__file__).resolve().parents[3] / "analysis" / "ucc_scoring.py"  # .../projetos
+
+pytestmark = pytest.mark.skipif(
+    not _ANALYSIS_PATH.exists(),
+    reason=f"external file {_ANALYSIS_PATH} not available (author's machine only)",
+)
 
 
 def _load_analysis_module():
-    root = Path(__file__).resolve().parents[3]  # .../projetos
-    path = root / "analysis" / "ucc_scoring.py"
-    spec = importlib.util.spec_from_file_location("analysis_ucc_scoring", path)
+    spec = importlib.util.spec_from_file_location("analysis_ucc_scoring", _ANALYSIS_PATH)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod

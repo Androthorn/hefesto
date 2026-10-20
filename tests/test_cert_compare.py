@@ -2,7 +2,14 @@ import importlib
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path("/home/andre/projetos")
+
+pytestmark = pytest.mark.skipif(
+    not (ROOT / "cert_compare.py").exists(),
+    reason=f"external module {ROOT / 'cert_compare.py'} not available (author's machine only)",
+)
 
 
 def _mod():

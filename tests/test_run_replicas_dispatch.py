@@ -2,9 +2,16 @@ import importlib
 import sys
 from pathlib import Path
 
+import pytest
+
 # Os runners foram versionados dentro de simulatormeu/ (antes viviam soltos na raiz
 # de projetos/, que nao e repositorio e portanto nao dava proveniencia a eles).
 ROOT = Path("/home/andre/projetos/simulatormeu")
+
+pytestmark = pytest.mark.skipif(
+    not (ROOT / "run_replicas.py").exists(),
+    reason=f"external module {ROOT / 'run_replicas.py'} not available (author's machine only)",
+)
 
 
 def _mod():
